@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+/build/
+/dist/
+/.venv/
+/venv/
+*.egg-info/
+src/*.egg-info/
+
+# local scratch
+/.coverage
+/htmlcov/
+/*.local.json
+
+# never drop fixtures or examples, whatever a glob above thinks
+!tests/fixtures/**
+!examples/**

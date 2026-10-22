@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "collected_at": "2026-10-22T09:00:00+00:00",
+  "region": "eu-central-1",
+  "all_revisions": false,
+  "tags": {},
+  "task_definitions": [
+    {
+      "family": "checkout-api",
+      "revision": 94,
+      "taskDefinitionArn": "arn:aws:ecs:eu-central-1:111122223333:task-definition/checkout-api:94",
+      "networkMode": "awsvpc",
+      "requiresCompatibilities": ["FARGATE"],
+      "cpu": "256",
+      "memory": "8192",
+      "executionRoleArn": "arn:aws:iam::111122223333:role/ecsTaskExecutionRole",
+      "taskRoleArn": "arn:aws:iam::111122223333:role/ecsTaskExecutionRole",
+      "containerDefinitions": [
+        {
+          "name": "web",
+          "image": "111122223333.dkr.ecr.eu-central-1.amazonaws.com/checkout-api:latest",
+          "essential": true,
+          "environment": [
+            {"name": "DB_PASSWORD", "value": "hunter2-but-longer"},
+            {"name": "LOG_LEVEL", "value": "info"},
+            {"name": "PARTITION_KEY", "value": "tenant_id"}
+          ],
+          "portMappings": [{"containerPort": 8080, "protocol": "tcp"}]
+        }
+      ]
+    },
+    {
+      "family": "batch-worker",
+      "revision": 7,
+      "taskDefinitionArn": "arn:aws:ecs:eu-central-1:111122223333:task-definition/batch-worker:7",
+      "networkMode": "host",
+      "requiresCompatibilities": ["EC2"],
+      "executionRoleArn": "arn:aws:iam::111122223333:role/ecsTaskExecutionRole",
+      "containerDefinitions": [
+        {
+          "name": "worker",
+          "image": "docker.io/library/python:3.11-slim",
+          "essential": true,
+          "privileged": true,
+          "user": "root",
+          "portMappings": [{"containerPort": 9000, "hostPort": 9000, "protocol": "tcp"}],
+          "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+              "awslogs-group": "/ecs/batch-worker",
+              "awslogs-region": "eu-central-1",
+              "awslogs-stream-prefix": "ecs"
+            }
+          },
+          "environment": [
+            {"name": "QUEUE_URL", "value": "https://sqs.eu-central-1.amazonaws.com/111122223333/jobs"},
+            {"name": "UPSTREAM_DSN", "value": "postgres://svc:s3cr3t-value@db.internal:5432/app"}
+          ]
+        }
+      ]
+    },
+    {
+      "family": "well-behaved",
+      "revision": 3,
+      "taskDefinitionArn": "arn:aws:ecs:eu-central-1:111122223333:task-definition/well-behaved:3",
+      "networkMode": "awsvpc",
+      "requiresCompatibilities": ["FARGATE"],
+      "cpu": "512",
+      "memory": "1024",
+      "executionRoleArn": "arn:aws:iam::111122223333:role/ecsTaskExecutionRole",
+      "taskRoleArn": "arn:aws:iam::111122223333:role/checkout-app",
+      "containerDefinitions": [
+        {
+          "name": "app",
+          "image": "111122223333.dkr.ecr.eu-central-1.amazonaws.com/app@sha256:4f2b1c9e8a7d6c5b4a3928170615243342516273849506a7b8c9d0e1f2a3b4c5",
+          "essential": true,
+          "user": "10001",
+          "readonlyRootFilesystem": true,
+          "healthCheck": {
+            "command": ["CMD-SHELL", "curl -fsS localhost:8080/healthz || exit 1"],
+            "interval": 15,
+            "timeout": 3,
+            "retries": 3
+          },
+          "secrets": [
+            {
+              "name": "DB_PASSWORD",
+              "valueFrom": "arn:aws:secretsmanager:eu-central-1:111122223333:secret:prod/checkout/db-AbCdEf"
+            }
+          ],
+          "environment": [{"name": "LOG_LEVEL", "value": "info"}],
+          "logConfiguration": {
+            "logDriver": "awslogs",
+            "options": {
+              "awslogs-group": "/ecs/well-behaved",
+              "awslogs-region": "eu-central-1",
+              "awslogs-stream-prefix": "ecs"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
