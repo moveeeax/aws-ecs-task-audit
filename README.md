@@ -1,7 +1,7 @@
 # aws-ecs-task-audit
 
 [![ci](https://github.com/moveeeax/aws-ecs-task-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/moveeeax/aws-ecs-task-audit/actions/workflows/ci.yml)
-[![python](https://img.shields.io/badge/python-3.9%20%7C%203.11%20%7C%203.12-blue)](https://www.python.org/)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue)](https://www.python.org/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A task definition is the one place where a container's whole security posture is declared,

@@ -21,7 +21,7 @@ class CollectionError(RuntimeError):
 
 
 def _utcnow() -> str:
-    return _dt.datetime.now(_dt.timezone.utc).replace(microsecond=0).isoformat()
+    return _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat()
 
 
 def _session(profile: str | None, region: str | None):

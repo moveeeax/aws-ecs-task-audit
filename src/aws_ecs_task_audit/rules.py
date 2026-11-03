@@ -8,8 +8,9 @@ a complete test harness for the tool.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 SEVERITIES = ("low", "medium", "high")
 
