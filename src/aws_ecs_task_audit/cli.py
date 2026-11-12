@@ -14,7 +14,7 @@ import sys
 from collections.abc import Sequence
 
 from . import __version__
-from .collector import CollectionError, collect, dump, load
+from .collector import CollectionError, collect, dump, load, load_taskdefs
 from .report import render_json, render_text
 from .rules import RULES, SEVERITIES, UnknownRuleError, audit, validate_rule_names
 
@@ -55,10 +55,20 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="NAME",
         help="limit collection to this family (repeatable)",
     )
-    source.add_argument(
+    replay = source.add_mutually_exclusive_group()
+    replay.add_argument(
         "--from-json",
         metavar="FILE",
         help="replay a payload written by --dump-json instead of calling AWS",
+    )
+    replay.add_argument(
+        "--from-taskdef",
+        action="append",
+        default=[],
+        metavar="FILE|DIR",
+        help="audit task definition JSON files before registration: register-task-definition "
+        "input or describe-task-definition output; a directory means its *.json files "
+        "(repeatable)",
     )
     source.add_argument(
         "--dump-json",
@@ -116,6 +126,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.from_json:
             payload = load(args.from_json)
+        elif args.from_taskdef:
+            payload = load_taskdefs(args.from_taskdef)
         else:
             payload = collect(
                 profile=args.profile,

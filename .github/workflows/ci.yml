@@ -43,3 +43,8 @@ jobs:
           set -e
           test "$code" -eq 1
           aws-ecs-task-audit --from-json examples/clean-dump.json
+          set +e
+          aws-ecs-task-audit --from-taskdef examples/taskdefs --fail-on invalid-fargate-size
+          code=$?
+          set -e
+          test "$code" -eq 1
