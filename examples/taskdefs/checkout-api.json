@@ -1,0 +1,33 @@
+{
+  "family": "checkout-api",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "0.25 vCPU",
+  "memory": "8 GB",
+  "executionRoleArn": "arn:aws:iam::111122223333:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::111122223333:role/checkout-api",
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "111122223333.dkr.ecr.eu-central-1.amazonaws.com/checkout-api:latest",
+      "essential": true,
+      "user": "10001",
+      "readonlyRootFilesystem": true,
+      "environment": [
+        {"name": "DB_PASSWORD", "value": "hunter2-but-longer"},
+        {"name": "LOG_LEVEL", "value": "info"}
+      ],
+      "portMappings": [{"containerPort": 8080, "protocol": "tcp"}],
+      "healthCheck": {"command": ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]},
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/checkout-api",
+          "awslogs-region": "eu-central-1",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ],
+  "tags": [{"key": "team", "value": "payments"}]
+}

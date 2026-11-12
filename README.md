@@ -35,6 +35,9 @@ the rule engine is a pure function of that dict. So `--dump-json` writes a paylo
 commit, mail to a colleague, or replay with `--from-json` — and the whole test suite runs
 offline against JSON fixtures with no AWS account.
 
+`--from-taskdef` feeds the same rules from task definition files that were never
+registered, so the audit can run in PR review instead of after `register-task-definition`.
+
 By default only the latest ACTIVE revision of each family is described, because that is the
 one a service will actually deploy. `--all-revisions` widens the sweep.
 
@@ -58,6 +61,9 @@ aws-ecs-task-audit --profile prod --dump-json /tmp/tasks.json
 # replay offline, machine readable
 aws-ecs-task-audit --from-json /tmp/tasks.json --format json \
   | jq '.findings[] | select(.rule=="plaintext-secret")'
+
+# lint task definitions in the repo before they are registered
+aws-ecs-task-audit --from-taskdef deploy/taskdefs/ --fail-on plaintext-secret,invalid-fargate-size
 
 # gate a pipeline on the two that actually break things
 aws-ecs-task-audit --fail-on plaintext-secret,invalid-fargate-size \
@@ -92,6 +98,38 @@ checkout-api:94
 5 finding(s) across 3 task definition(s): 5 high, 0 medium, 0 low.
 ```
 
+### Task definition files
+
+`--from-taskdef FILE|DIR` (repeatable) reads one task definition per file, in either shape:
+
+- the input of `aws ecs register-task-definition --cli-input-json file://...`, as kept by
+  ecs-deploy, Copilot, or a hand-written repo;
+- the output of `aws ecs describe-task-definition`, with its `taskDefinition` wrapper.
+
+A directory means every `*.json` file directly inside it, in name order; subdirectories are
+not searched. A file in that directory that is not a task definition is a usage error, not a
+silent skip. Task-level `cpu` and `memory` written as `"1 vCPU"` or `"2 GB"` are converted to
+units the way registration converts them, so `invalid-fargate-size` judges what ECS would store.
+
+An unregistered definition has no revision and no ARN, so the text report names it by
+`family` and the file it came from (`checkout-api  (deploy/taskdefs/checkout-api.json)`),
+and every JSON finding carries a `source` field. `--from-taskdef` and `--from-json` are
+mutually exclusive; `--dump-json` works with either.
+
+```console
+$ aws-ecs-task-audit --from-taskdef examples/taskdefs --severity high
+checkout-api  (examples/taskdefs/checkout-api.json)
+  HIGH invalid-fargate-size   task
+        cpu 256 with memory 8192 is not a supported Fargate combination; RunTask fails at launch
+        time, not at registration. Nearest supported pair is cpu 1024 with memory 8192.
+  HIGH plaintext-secret       web
+        environment variable DB_PASSWORD is named like a credential; anyone who can call
+        DescribeTaskDefinition can read it. Move it to the secrets block and reference Secrets
+        Manager or SSM.
+
+2 finding(s) across 1 task definition(s): 2 high, 0 medium, 0 low.
+```
+
 ### Options
 
 | flag | effect |
@@ -101,6 +139,7 @@ checkout-api:94
 | `--all-revisions` | describe every ACTIVE revision, not just the latest |
 | `--dump-json FILE` | write the collected payload for offline replay |
 | `--from-json FILE` | replay a payload instead of calling AWS |
+| `--from-taskdef FILE\|DIR` | audit task definition files before registration (repeatable) |
 | `--format text\|json` | output shape (default `text`) |
 | `--severity low\|medium\|high` | suppress findings below this level |
 | `--ignore-rule RULES` | comma separated rule names to skip (repeatable) |

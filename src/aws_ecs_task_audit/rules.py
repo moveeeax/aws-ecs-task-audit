@@ -80,6 +80,7 @@ class Finding:
     message: str
     container: str | None = None
     task_definition_arn: str | None = None
+    source: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -89,6 +90,7 @@ class Finding:
             "revision": self.revision,
             "container": self.container,
             "task_definition_arn": self.task_definition_arn,
+            "source": self.source,
             "message": self.message,
         }
 
@@ -106,6 +108,8 @@ class TaskContext:
     """A task definition plus the few derived facts every rule wants."""
 
     definition: dict[str, Any]
+    #: The file an unregistered definition was read from (``--from-taskdef``).
+    source: str | None = None
 
     @property
     def family(self) -> str:
@@ -152,6 +156,7 @@ class TaskContext:
             revision=self.revision,
             container=container,
             task_definition_arn=self.arn,
+            source=self.source,
             message=message,
         )
 
@@ -535,8 +540,9 @@ def audit(
     floor = SEVERITIES.index(min_severity)
 
     findings: list[Finding] = []
-    for definition in payload.get("task_definitions") or []:
-        ctx = TaskContext(definition)
+    sources = payload.get("sources") or []
+    for index, definition in enumerate(payload.get("task_definitions") or []):
+        ctx = TaskContext(definition, sources[index] if index < len(sources) else None)
         if ctx.family in ignore_families:
             continue
         for rule in RULES:
@@ -550,6 +556,7 @@ def audit(
         key=lambda f: (
             f.family,
             f.revision,
+            f.source or "",
             -SEVERITIES.index(f.severity),
             f.rule,
             f.container or "",

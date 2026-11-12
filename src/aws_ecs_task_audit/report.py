@@ -12,11 +12,18 @@ from .rules import SEVERITIES, Finding
 SEVERITY_LABEL = {"high": "HIGH", "medium": "MED ", "low": "LOW "}
 
 
-def _group(findings: Iterable[Finding]) -> list[tuple[tuple[str, int], list[Finding]]]:
-    grouped: dict[tuple[str, int], list[Finding]] = {}
+def _group(findings: Iterable[Finding]) -> list[tuple[tuple[str, int, str], list[Finding]]]:
+    grouped: dict[tuple[str, int, str], list[Finding]] = {}
     for finding in findings:
-        grouped.setdefault((finding.family, finding.revision), []).append(finding)
+        key = (finding.family, finding.revision, finding.source or "")
+        grouped.setdefault(key, []).append(finding)
     return sorted(grouped.items())
+
+
+def _heading(family: str, revision: int, source: str) -> str:
+    # An unregistered definition has no revision yet; name it by family alone.
+    name = f"{family}:{revision}" if revision else family
+    return f"{name}  ({source})" if source else name
 
 
 def counts_by_severity(findings: Iterable[Finding]) -> dict[str, int]:
@@ -34,8 +41,8 @@ def render_text(findings: list[Finding], payload: dict[str, Any], width: int = 1
         lines.append(f"No findings across {scanned} task definition(s).")
         return "\n".join(lines)
 
-    for (family, revision), group in _group(findings):
-        lines.append(f"{family}:{revision}")
+    for (family, revision, source), group in _group(findings):
+        lines.append(_heading(family, revision, source))
         for finding in group:
             target = finding.container or "task"
             head = f"  {SEVERITY_LABEL[finding.severity]} {finding.rule:<22} {target}"
